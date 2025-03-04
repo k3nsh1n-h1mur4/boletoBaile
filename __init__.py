@@ -1,28 +1,45 @@
 import os
 import psycopg2
-from dotenv import dotenv_values, load_dotenv
+from dotenv import dotenv_values
+from decouple import config
+from pathlib import Path
+
 
 from flask import Flask, request, render_template, redirect, url_for, flash
+from werkzeug.utils import secure_filename
 from flask_wtf.csrf import CSRFProtect
 
 from .forms import BoletoForm
 
-config = dotenv_values('.env')
-
+UPLOAD_FOLDER = Path.cwd() / 'uploads'
+ALLOWED_EXTENSIONS = {'pdf'}
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://config["USER"]:config["PASSWORD"]@config["HOST"]/config["DBNAME"]'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.urandom(24)
-
+app.config['SECRET_KEY'] = os.urandom(16)
+app.config['WTF_CSRF_SECRET_KEY'] = os.urandom(16)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 csrf = CSRFProtect(app)
+csrf.init_app(app)
 
 
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    if request.method == 'GET':
-        form = BoletoForm()
+    form = BoletoForm(request.form)
+    if request.method == 'POST' and form.validate():
+        app = form.app.data
+        apm = form.apm.data
+        nombre = form.nombre.data
+        matricula = form.matricula.data
+        email = form.email.data
+        conn = psycopg2.connect(user=config('USER'), password=config('PASSWORD'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
+        cur = conn.cursor()
+        cur.execute("INSERT INTO boletos(app, apm, nombre, matricula, email) VALUES (%s, %s, %s, %s, %s);", (app.upper(), apm.upper(), nombre.upper(), matricula.upper(), email))
+        conn.commit()
+        flash('Registro exitoso')
+        return redirect(url_for('index'))
     return render_template('registro.html', form=form, title='Registro')
 
 

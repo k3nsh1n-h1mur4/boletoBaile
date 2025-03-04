@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS boletos ( \
     app VARCHAR(100) NOT NULL, \
     apm VARCHAR(100) NOT NULL, \ 
     nombre VARCHAR(100) NOT NULL, \
+    matricula VARCHAR(15) NOT NULL, \
     email VARCHAR(250) NOT NULL, \
     createdat TIMESTAMP NOT NULL DEFAULT NOW() \
 );
