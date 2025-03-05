@@ -25,8 +25,12 @@ csrf = CSRFProtect(app)
 csrf.init_app(app)
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
+    return render_template('index.html', title='Boleto Baile')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
     form = BoletoForm(request.form)
     if request.method == 'POST' and form.validate():
         app = form.app.data
@@ -34,6 +38,10 @@ def index():
         nombre = form.nombre.data
         matricula = form.matricula.data
         email = form.email.data
+        ine = request.files['ine']
+        tarjeton = request.files['tarjeton']
+        acta_hijo = request.files['acta_hijo']
+        print(ine)
         conn = psycopg2.connect(user=config('USER'), password=config('PASSWORD'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
         cur = conn.cursor()
         cur.execute("INSERT INTO boletos(app, apm, nombre, matricula, email) VALUES (%s, %s, %s, %s, %s);", (app.upper(), apm.upper(), nombre.upper(), matricula.upper(), email))
