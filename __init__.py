@@ -4,7 +4,7 @@ from dotenv import dotenv_values
 from decouple import config
 from pathlib import Path
 
-
+import flask
 from flask import Flask, request, render_template, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 from flask_wtf.csrf import CSRFProtect
@@ -16,16 +16,22 @@ UPLOAD_FOLDER = Path.cwd() / 'uploads'
 ALLOWED_EXTENSIONS = {'pdf'}
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://config["USER"]@config["HOST"]/config["DBNAME"]'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://config["USER"]:config["PASSWORD"]@config["HOST"]:config["PORT"]/config["DBNAME"]'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.urandom(16)
 app.config['WTF_CSRF_SECRET_KEY'] = os.urandom(16)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1000 * 1000
 
 csrf = CSRFProtect(app)
 csrf.init_app(app)
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
+
+
+def allowed_file(filename1, filename2, filename3):
+    return '.' in filename1 and filename1.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+       
 
 
 @app.route('/')
@@ -33,32 +39,57 @@ def index():
     return render_template('index.html', title='Boleto Baile')
 
 
+    
+
+
 @app.route('/register', methods=['GET', 'POST'])
 @cross_origin()
 def register():
     form = BoletoForm(request.form)
     if request.method == 'POST' and form.validate():
-        app = form.app.data
-        apm = form.apm.data
-        nombre = form.nombre.data
-        matricula = form.matricula.data
-        email = form.email.data
-        ine = request.files['ine']
-        tarjeton = request.files['tarjeton']
-        acta_hijo = request.files['acta_hijo']
-        print(ine)
-        try: 
-            conn = psycopg2.connect(user=config('USER'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
+        try:
+            app = form.app.data
+            apm = form.apm.data
+            nombre = form.nombre.data
+            matricula = form.matricula.data
+            email = form.email.data
+            ine = request.files['ine']
+            tarjeton = request.files['tarjeton']
+            acta_hijo = request.files['acta_hijo']
+            files = [ine, tarjeton, acta_hijo]
+            for file in files:
+                if file:
+                    filename = secure_filename(file.filename)
+                    
+                    file.save(os.path.join(UPLOAD_FOLDER / os.makedirs(app, exist_ok=True), filename))
+            conn = psycopg2.connect(user=config('USER'), password=config('PASSWORD'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
             cur = conn.cursor()
             cur.execute("INSERT INTO boletos(app, apm, nombre, matricula, email) VALUES (%s, %s, %s, %s, %s);", (app.upper(), apm.upper(), nombre.upper(), matricula.upper(), email))
             conn.commit()
             flash('Registro exitoso, tú Boleto digital será enviado al correo registrado.')
             return redirect(url_for('index'))
         except psycopg2.Error as e:
-            raise e.pgerror
+            raise e
     return render_template('registro.html', form=form, title='Registro')
 
 
+
+@app.route('/getRegisters', methods=['GET'])
+def getRegisters():
+    conn = psycopg2.connect(user=config('USER'), password=config('PASSWORD'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM boletos;")
+    rows = cur.fetchall()
+    return render_template('getRegisters.html', rows=rows, title='Registros')
+
+
+@app.route('/error')
+def error():
+    return render_template('errors.html')
+
+@app.route('/success')
+def success():
+    return render_template('success.html')
 
 
 if __name__ == '__main__':
