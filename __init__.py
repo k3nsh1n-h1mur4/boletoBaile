@@ -60,14 +60,15 @@ def register():
             for file in files:
                 if file:
                     filename = secure_filename(file.filename)
-                    
-                    file.save(os.path.join(UPLOAD_FOLDER / os.makedirs(app, exist_ok=True), filename))
+                    file.save(os.path.join(UPLOAD_FOLDER, filename))
+                elif len(files) <= 3:
+                    return render_template('/http_codes/400.html', title='Error, falta de Archivos')
             conn = psycopg2.connect(user=config('USER'), password=config('PASSWORD'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
             cur = conn.cursor()
             cur.execute("INSERT INTO boletos(app, apm, nombre, matricula, email) VALUES (%s, %s, %s, %s, %s);", (app.upper(), apm.upper(), nombre.upper(), matricula.upper(), email))
             conn.commit()
-            flash('Registro exitoso, tú Boleto digital será enviado al correo registrado.')
-            return redirect(url_for('index'))
+            #flash('Registro exitoso, tú Boleto digital será enviado al correo registrado.')
+            return redirect(url_for('success'))
         except psycopg2.Error as e:
             raise e
     return render_template('registro.html', form=form, title='Registro')
@@ -85,11 +86,11 @@ def getRegisters():
 
 @app.route('/error')
 def error():
-    return render_template('errors.html')
+    return render_template('/http_codes/400.html')
 
 @app.route('/success')
 def success():
-    return render_template('success.html')
+    return render_template('/http_codes/200.html')
 
 
 if __name__ == '__main__':

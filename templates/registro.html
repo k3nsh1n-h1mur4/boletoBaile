@@ -6,19 +6,22 @@
 
 {% block content %}
 
-<h1>Registro</h1>
-<form action="" method="POST" enctype="multipart/form-data">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <dl>
-      {{ render_field(form.app) }}
-      {{ render_field(form.apm) }}
-      {{ render_field(form.nombre) }}
-      {{ render_field(form.matricula) }}
-      {{ render_field(form.email) }}
-      {{ render_field(form.ine) }}
-      {{ render_field(form.tarjeton) }}
-      {{ render_field(form.acta_hijo) }}
-    </dl>
-  <input type="submit" value="Registrar">
-</form>
+  <h1>Registro Festejo DÍA DE MAMÁS Y PAPÁS</h1>
+
+<div class="form-div">
+  <form action="" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <dl>
+        {{ render_field(form.app) }}
+        {{ render_field(form.apm) }}
+        {{ render_field(form.nombre) }}
+        {{ render_field(form.matricula) }}
+        {{ render_field(form.email) }}
+        {{ render_field(form.ine) }}
+        {{ render_field(form.tarjeton) }}
+        {{ render_field(form.acta_hijo) }}
+      </dl>
+    <input type="submit" value="Registrar">
+  </form>
+</div>  
 {% endblock %}
