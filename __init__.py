@@ -1,8 +1,12 @@
 import os
+import segno
+from qrcode import QRCode as qr
 import psycopg2
+from fpdf import FPDF
 from dotenv import dotenv_values
 from decouple import config
 from pathlib import Path
+
 
 import flask
 from flask import Flask, request, render_template, redirect, url_for, flash
@@ -12,7 +16,8 @@ from flask_cors import CORS, cross_origin
 
 from .forms import BoletoForm
 
-UPLOAD_FOLDER = Path.cwd() / 'uploads'
+pathFile = Path.cwd() / 'boletoBaile'
+UPLOAD_FOLDER = pathFile.joinpath('uploads')
 ALLOWED_EXTENSIONS = {'pdf'}
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -25,26 +30,28 @@ app.config['MAX_CONTENT_LENGTH'] = 2 * 1000 * 1000
 
 csrf = CSRFProtect(app)
 csrf.init_app(app)
-cors = CORS(app, resources={r"/*": {"origins": "*"}})
+cors = CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers="*")
 
 
-def allowed_file(filename1, filename2, filename3):
-    return '.' in filename1 and filename1.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-       
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+def genQr(data: str, name: str):
+    qrCode = segno.make_qr(data, version=10, encoding='utf-8') 
+    qrCode.save(Path.cwd().joinpath("boleto" + "_" + name + ".png"))
+    return qrCode
 
 @app.route('/')
 def index():
     return render_template('index.html', title='Boleto Baile')
 
 
-    
-
-
 @app.route('/register', methods=['GET', 'POST'])
 @cross_origin()
 def register():
+    print(UPLOAD_FOLDER)
     form = BoletoForm(request.form)
     if request.method == 'POST' and form.validate():
         try:
@@ -58,7 +65,7 @@ def register():
             acta_hijo = request.files['acta_hijo']
             files = [ine, tarjeton, acta_hijo]
             for file in files:
-                if file:
+                if file and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
                     file.save(os.path.join(UPLOAD_FOLDER, filename))
                 elif len(files) <= 3:
@@ -76,13 +83,31 @@ def register():
 
 
 @app.route('/getRegisters', methods=['GET'])
+@cross_origin()
 def getRegisters():
     conn = psycopg2.connect(user=config('USER'), password=config('PASSWORD'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
     cur = conn.cursor()
     cur.execute("SELECT * FROM boletos;")
     rows = cur.fetchall()
+    conn.commit()
+    cur.close()
+    conn.close()
     return render_template('getRegisters.html', rows=rows, title='Registros')
 
+
+@app.route('/qrcode/<int:id>', methods=['GET'])
+def qrcode(id):
+    id = id
+    conn = psycopg2.connect(user=config('USER'), password=config('PASSWORD'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM boletos WHERE id = %s", (id,))
+    rows = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    genQr(str(rows), str(rows[4]))
+    return render_template('boleto.html', id=id)
+    
 
 @app.route('/error')
 def error():

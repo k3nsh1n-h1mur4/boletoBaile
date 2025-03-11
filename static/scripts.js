@@ -1,21 +1,13 @@
+import fs from 'fs';
 
 
 
 
+const url = '/getRegisters';
 
-/*const url = 'getRegisters';
-
-fetch(url)  
-  .then(response => response.json())  
+fetch(url, { method: 'GET', 'Allow-Control-Allow-Origin': '*' })
+  .then(response => response.text())  
   .then(data => {
     console.log(data);
-    document.getElementById('registros').innerHTML = data.map(row => `
-      <tr>
-        <td>${row.app}</td>
-        <td>${row.apm}</td>
-        <td>${row.nombre}</td>
-        <td>${row.matricula}</td>
-        <td>${row.email}</td>
-      </tr>
-    `).join('');
-  });*/
+    console.log(fs)
+  });
