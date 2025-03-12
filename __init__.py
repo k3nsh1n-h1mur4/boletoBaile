@@ -1,15 +1,18 @@
 import os
 import segno
-from qrcode import QRCode as qr
 import psycopg2
+import resend
+from qrcode import QRCode as qr
 from fpdf import FPDF
 from dotenv import dotenv_values
 from decouple import config
 from pathlib import Path
 
+from .pdfGen import FPDF
+
 
 import flask
-from flask import Flask, request, render_template, redirect, url_for, flash
+from flask import Flask, request, render_template, redirect, url_for, flash, jsonify
 from werkzeug.utils import secure_filename
 from flask_wtf.csrf import CSRFProtect
 from flask_cors import CORS, cross_origin
@@ -95,7 +98,7 @@ def getRegisters():
     return render_template('getRegisters.html', rows=rows, title='Registros')
 
 
-@app.route('/qrcode/<int:id>', methods=['GET'])
+@app.route('/pdfGen/<int:id>', methods=['GET'])
 def qrcode(id):
     id = id
     conn = psycopg2.connect(user=config('USER'), password=config('PASSWORD'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
@@ -105,8 +108,26 @@ def qrcode(id):
     conn.commit()
     cur.close()
     conn.close()
+    pdf = FPDF()
+    pdf.Image()
+    pdf.output("boleto.pdf")
     genQr(str(rows), str(rows[4]))
     return render_template('boleto.html', id=id)
+
+
+@app.route('/sendMail', methods=['GET', 'POST'])
+def sendMail():
+    resend.api_key = config('RESEND_API_KEY')
+    params: resend.Emails.SendParams = {
+        "from": "Acme <onboarding@resend.dev>",
+        "to": ["isaac.acervantes@gmail.com"],
+        "subject": "Boleto Baile",
+        "html": f"Hola, tu boleto digital ha sido generado, puedes verlo en <a href='http://localhost:5000/qrcode/{id}'>este enlace</a>",
+        "text": "Hola, tu boleto digital ha sido generado, puedes verlo en este enlace http://localhost:5000/qrcode/{id}"
+    }
+    r = resend.Emails.send(params)
+    return jsonify(r)
+    
     
 
 @app.route('/error')
