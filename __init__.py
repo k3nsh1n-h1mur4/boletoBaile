@@ -7,6 +7,7 @@ from fpdf import FPDF
 from dotenv import dotenv_values
 from decouple import config
 from pathlib import Path
+from PIL import Image
 
 from .pdfGen import FPDF
 
@@ -108,10 +109,13 @@ def qrcode(id):
     conn.commit()
     cur.close()
     conn.close()
+    genQr(str(rows), str(rows[4]))
     pdf = FPDF()
     pdf.Image()
+    pdf.image('boleto_' + str(rows[4]) + '.png', x=25, y=45, w=70, h=45) 
     pdf.output("boleto.pdf")
-    genQr(str(rows), str(rows[4]))
+    #genQr(str(rows), str(rows[4]))
+    #print(genQr)
     return render_template('boleto.html', id=id)
 
 
