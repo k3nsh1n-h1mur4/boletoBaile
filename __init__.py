@@ -20,6 +20,8 @@ from flask_cors import CORS, cross_origin
 
 from .forms import BoletoForm
 
+
+pathBase = Path.cwd()
 pathFile = Path.cwd() / 'boletoBaile'
 UPLOAD_FOLDER = pathFile.joinpath('uploads')
 ALLOWED_EXTENSIONS = {'pdf'}
@@ -46,6 +48,23 @@ def genQr(data: str, name: str):
     qrCode = segno.make_qr(data, version=10, encoding='utf-8') 
     qrCode.save(Path.cwd().joinpath("boleto" + "_" + name + ".png"))
     return qrCode
+
+def varifyMatricula(matricula: str):
+    try:
+        conn = psycopg2.connect(user=config('USER'), password=config('PASSWORD'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
+        cur = conn.cursor()
+        cur.execute('SELECT matricula FROM boletos WHERE matricula = %s;', (matricula,))
+        result = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        if result:
+            return render_template('boleto.html', error='Matrícula ya registrada')
+        else:
+            print('Matrícula no registrada')
+            return redirect(url_for('register'))
+    except psycopg2.Error as e:
+        return render_template('boleto.html', error='Matrícula ya registrada')
 
 @app.route('/')
 def index():
@@ -76,6 +95,7 @@ def register():
                     return render_template('/http_codes/400.html', title='Error, falta de Archivos')
             conn = psycopg2.connect(user=config('USER'), password=config('PASSWORD'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
             cur = conn.cursor()
+            varifyMatricula(matricula)
             cur.execute("INSERT INTO boletos(app, apm, nombre, matricula, email) VALUES (%s, %s, %s, %s, %s);", (app.upper(), apm.upper(), nombre.upper(), matricula.upper(), email))
             conn.commit()
             #flash('Registro exitoso, tú Boleto digital será enviado al correo registrado.')
@@ -122,14 +142,19 @@ def qrcode(id):
 @app.route('/sendMail', methods=['GET', 'POST'])
 def sendMail():
     resend.api_key = config('RESEND_API_KEY')
+    f = open(pathBase.joinpath('boleto.pdf'), "rb").read()
+    
+    attachment: resend.Attachment = {"content": list(f), "filename": "boleto.pdf" }
     params: resend.Emails.SendParams = {
         "from": "Acme <onboarding@resend.dev>",
         "to": ["isaac.acervantes@gmail.com"],
         "subject": "Boleto Baile",
         "html": f"Hola, tu boleto digital ha sido generado, puedes verlo en <a href='http://localhost:5000/qrcode/{id}'>este enlace</a>",
-        "text": "Hola, tu boleto digital ha sido generado, puedes verlo en este enlace http://localhost:5000/qrcode/{id}"
+        "text": "Hola, tu boleto digital ha sido generado, puedes verlo en este enlace http://localhost:5000/qrcode/{id}",
+        "attachments": [attachment],
     }
     r = resend.Emails.send(params)
+    print(f)
     return jsonify(r)
     
     
