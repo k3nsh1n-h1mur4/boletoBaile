@@ -10,4 +10,4 @@ class FPDF(FPDF):
         self.pathStatic = self.path.joinpath('static')
         
     def Image(self):
-        self.image(self.pathStatic.joinpath('BOLETOQR.webp'), x=10, y=10, w=100, h=150)
+        self.image(self.pathStatic.joinpath('BOLETO_QR.png'), x=10, y=10, w=100, h=150)

@@ -74,7 +74,8 @@ def index():
 @app.route('/register', methods=['GET', 'POST'])
 @cross_origin()
 def register():
-    print(UPLOAD_FOLDER)
+    error = None
+    os.chdir(pathBase)
     form = BoletoForm(request.form)
     if request.method == 'POST' and form.validate():
         try:
@@ -87,10 +88,13 @@ def register():
             tarjeton = request.files['tarjeton']
             acta_hijo = request.files['acta_hijo']
             files = [ine, tarjeton, acta_hijo]
+            os.mkdir(str(matricula))
+            os.chdir(str(matricula))
             for file in files:
                 if file and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
-                    file.save(os.path.join(UPLOAD_FOLDER, filename))
+                    file.save(filename)
+                    #file.save(os.path.join(UPLOAD_FOLDER, filename))
                 elif len(files) <= 3:
                     return render_template('/http_codes/400.html', title='Error, falta de Archivos')
             conn = psycopg2.connect(user=config('USER'), password=config('PASSWORD'), host=config('HOST'), dbname=config('DBNAME'), port=config('PORT'))
